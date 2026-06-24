@@ -91,4 +91,4 @@ dotnet test tests/SimDesk.Core.Tests/
 
 ## 许可证
 
-本项目使用 MIT 许可证 — 详见 [LICENSE](LICENSE)。
+本项目使用 GNU General Public License v3.0 — 详见 [LICENSE](LICENSE)。
