@@ -2,7 +2,6 @@
   <Folder Name="/src/">
     <Project Path="src/SimDesk.App/SimDesk.App.csproj" />
     <Project Path="src/SimDesk.Core/SimDesk.Core.csproj" />
-    <Project Path="src/SimDesk.Installer/SimDesk.Installer.csproj" />
     <Project Path="src/SimDesk.ShellExtension/SimDesk.ShellExtension.csproj" />
   </Folder>
   <Folder Name="/tests/">
