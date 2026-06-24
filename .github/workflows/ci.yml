@@ -113,8 +113,8 @@ jobs:
       - name: 编译安装器
         if: matrix.configuration == 'Release'
         run: |
-          msbuild ${{ env.INSTALLER_PROJECT }} /t:Restore /p:Configuration=Release
-          msbuild ${{ env.INSTALLER_PROJECT }} /t:Build /p:Configuration=Release /p:Platform="Any CPU"
+          dotnet restore ${{ env.INSTALLER_PROJECT }}
+          dotnet build ${{ env.INSTALLER_PROJECT }} --no-restore --configuration Release
 
       - name: 构建 MSI 安装包
         if: matrix.configuration == 'Release'
