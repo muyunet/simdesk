@@ -12,7 +12,6 @@ env:
   CORE_PROJECT: src/SimDesk.Core/SimDesk.Core.csproj
   APP_PROJECT: src/SimDesk.App/SimDesk.App.csproj
   SHELL_PROJECT: src/SimDesk.ShellExtension/SimDesk.ShellExtension.csproj
-  INSTALLER_PROJECT: src/SimDesk.Installer/SimDesk.Installer.csproj
   TEST_PROJECT: tests/SimDesk.Core.Tests/SimDesk.Core.Tests.csproj
   PUBLISH_DIR: publish/
   DOTNET_VERSION: '10.0.x'
@@ -110,15 +109,11 @@ jobs:
           --self-contained true
           -o ${{ env.PUBLISH_DIR }}/ShellExt
 
-      - name: 编译安装器
-        if: matrix.configuration == 'Release'
-        run: |
-          dotnet restore ${{ env.INSTALLER_PROJECT }}
-          dotnet build ${{ env.INSTALLER_PROJECT }} --no-restore --configuration Release
-
       - name: 构建 MSI 安装包
         if: matrix.configuration == 'Release'
-        run: Get-ChildItem src\SimDesk.Installer\bin -Recurse -Filter SimDesk.Installer.exe | ForEach-Object { & $_.FullName }
+        run: |
+          candle.exe src\SimDesk.Installer\SimDesk.wxs -out publish\SimDesk.wixobj
+          light.exe publish\SimDesk.wixobj -out publish\SimDesk-0.1.0-x64.msi
 
       - name: 上传产物
         if: matrix.configuration == 'Release'
