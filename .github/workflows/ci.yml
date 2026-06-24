@@ -97,7 +97,6 @@ jobs:
           --configuration Release
           --runtime win-x64
           --self-contained true
-          -p:PublishSingleFile=true
           -o ${{ env.PUBLISH_DIR }}/SimDesk
 
       - name: 发布 Shell 扩展
