@@ -1,4 +1,4 @@
-name: CI
+name: .NET Desktop
 
 on:
   push:
@@ -7,67 +7,106 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  SOLUTION: SimDesk.slnx
+  CORE_PROJECT: src/SimDesk.Core/SimDesk.Core.csproj
+  APP_PROJECT: src/SimDesk.App/SimDesk.App.csproj
+  SHELL_PROJECT: src/SimDesk.ShellExtension/SimDesk.ShellExtension.csproj
+  INSTALLER_PROJECT: src/SimDesk.Installer/SimDesk.Installer.csproj
+  TEST_PROJECT: tests/SimDesk.Core.Tests/SimDesk.Core.Tests.csproj
+  PUBLISH_DIR: publish/
+  DOTNET_VERSION: '10.0.x'
+
 jobs:
-  # ===== Linux: 编译 Core + 运行测试 =====
+  # ============================================================
+  # Linux: Core 是纯 net10.0 类库，可在 Linux 编译 + 测试
+  # 秒级反馈，不消耗 Windows runner 额度
+  # ============================================================
   linux-test:
-    name: Linux 测试
+    name: Linux 测试 (Core)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-dotnet@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          dotnet-version: '10.0.x'
+          fetch-depth: 0
+
+      - name: 安装 .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: 还原依赖
-        run: dotnet restore
+        run: dotnet restore ${{ env.CORE_PROJECT }}
 
-      - name: 编译 Core
-        run: dotnet build src/SimDesk.Core/SimDesk.Core.csproj --no-restore
-
-      - name: 运行单元测试
-        run: dotnet test tests/SimDesk.Core.Tests/SimDesk.Core.Tests.csproj --no-build --verbosity normal
-
-  # ===== Windows: 完整编译 + 发布 =====
-  windows-build:
-    name: Windows 编译
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: 还原依赖
-        run: dotnet restore
-
-      - name: 编译全部项目
-        run: dotnet build --no-restore
+      - name: 编译
+        run: dotnet build ${{ env.CORE_PROJECT }} --no-restore
 
       - name: 运行测试
-        run: dotnet test tests/SimDesk.Core.Tests/SimDesk.Core.Tests.csproj --no-build --verbosity normal
+        run: dotnet test ${{ env.TEST_PROJECT }} --no-build --verbosity normal
 
-      - name: 发布 App（自包含）
+  # ============================================================
+  # Windows: WPF + Shell + Installer
+  # Debug   → 编译 + 测试（快）
+  # Release → 编译 + 测试 + 发布 + 打包 MSI + 上传
+  # ============================================================
+  build:
+    name: Windows (${{ matrix.configuration }})
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 安装 .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: 还原依赖
+        run: dotnet restore ${{ env.SOLUTION }}
+
+      - name: 编译
+        run: dotnet build ${{ env.SOLUTION }} --no-restore --configuration ${{ matrix.configuration }}
+
+      - name: 运行测试
+        run: dotnet test ${{ env.TEST_PROJECT }} --no-build --configuration ${{ matrix.configuration }} --verbosity normal
+
+      # ======== 以下仅 Release ========
+
+      - name: 发布 App
+        if: matrix.configuration == 'Release'
         run: >
-          dotnet publish src/SimDesk.App/SimDesk.App.csproj
+          dotnet publish ${{ env.APP_PROJECT }}
           --configuration Release
           --runtime win-x64
           --self-contained true
           -p:PublishSingleFile=true
-          -o publish/SimDesk
+          -o ${{ env.PUBLISH_DIR }}/SimDesk
 
       - name: 发布 Shell 扩展
+        if: matrix.configuration == 'Release'
         run: >
-          dotnet publish src/SimDesk.ShellExtension/SimDesk.ShellExtension.csproj
+          dotnet publish ${{ env.SHELL_PROJECT }}
           --configuration Release
           --runtime win-x64
           --self-contained true
-          -o publish/ShellExt
+          -o ${{ env.PUBLISH_DIR }}/ShellExt
 
-      - name: 上传构建产物
+      - name: 构建 MSI 安装包
+        if: matrix.configuration == 'Release'
+        run: dotnet run --project ${{ env.INSTALLER_PROJECT }} --configuration Release
+
+      - name: 上传产物
+        if: matrix.configuration == 'Release'
         uses: actions/upload-artifact@v4
         with:
           name: SimDesk-win-x64
-          path: publish/
+          path: ${{ env.PUBLISH_DIR }}
           retention-days: 30
