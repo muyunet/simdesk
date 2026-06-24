@@ -74,7 +74,11 @@ jobs:
 
       - name: 安装 WiX Toolset
         if: matrix.configuration == 'Release'
-        run: choco install wixtoolset -y --version=3.11.2 --no-progress
+        run: |
+          curl -L -o wix.zip "https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip"
+          Expand-Archive wix.zip -DestinationPath "C:\wix"
+          "WIX=C:\wix" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "C:\wix" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: 还原依赖
         run: dotnet restore ${{ env.SOLUTION }}
