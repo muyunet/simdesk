@@ -4,14 +4,7 @@
              Startup="OnStartup"
              Exit="OnExit">
     <Application.Resources>
-        <!-- 下拉阴影效果 -->
-        <DropShadowEffect x:Key="DropShadowEffect"
-                          BlurRadius="8"
-                          ShadowDepth="2"
-                          Opacity="0.15"
-                          Color="Black" />
-
-        <!-- 标题栏按钮样式（无边框小按钮） -->
+        <!-- 标题栏按钮样式 -->
         <Style x:Key="TitleBarButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
@@ -22,8 +15,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border Background="{TemplateBinding Background}"
-                                CornerRadius="4"
-                                Padding="4">
+                                CornerRadius="4" Padding="4">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center" />
                         </Border>
@@ -37,5 +29,10 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- 下拉阴影 -->
+        <DropShadowEffect x:Key="DropShadowEffect"
+                          BlurRadius="8" ShadowDepth="2"
+                          Opacity="0.15" Color="Black" />
     </Application.Resources>
 </Application>
