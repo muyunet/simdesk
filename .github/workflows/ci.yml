@@ -72,6 +72,10 @@ jobs:
       - name: 安装 MSBuild
         uses: microsoft/setup-msbuild@v2
 
+      - name: 安装 WiX Toolset
+        if: matrix.configuration == 'Release'
+        run: choco install wixtoolset -y --version=3.11.2 --no-progress
+
       - name: 还原依赖
         run: dotnet restore ${{ env.SOLUTION }}
 
@@ -104,7 +108,9 @@ jobs:
 
       - name: 编译安装器
         if: matrix.configuration == 'Release'
-        run: msbuild ${{ env.INSTALLER_PROJECT }} /p:Configuration=Release /p:Platform="Any CPU"
+        run: |
+          msbuild ${{ env.INSTALLER_PROJECT }} /t:Restore /p:Configuration=Release
+          msbuild ${{ env.INSTALLER_PROJECT }} /t:Build /p:Configuration=Release /p:Platform="Any CPU"
 
       - name: 构建 MSI 安装包
         if: matrix.configuration == 'Release'
