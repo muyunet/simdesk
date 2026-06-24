@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SimDesk.App/SimDesk.App.csproj" />
+    <Project Path="src/SimDesk.Core/SimDesk.Core.csproj" />
+    <Project Path="src/SimDesk.ShellExtension/SimDesk.ShellExtension.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SimDesk.Core.Tests/SimDesk.Core.Tests.csproj" />
+  </Folder>
+</Solution>
