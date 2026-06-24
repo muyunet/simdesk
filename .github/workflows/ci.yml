@@ -9,48 +9,34 @@ on:
 
 env:
   SOLUTION: SimDesk.slnx
-  CORE_PROJECT: src/SimDesk.Core/SimDesk.Core.csproj
+  TEST_PROJECT: tests/SimDesk.Core.Tests/SimDesk.Core.Tests.csproj
   APP_PROJECT: src/SimDesk.App/SimDesk.App.csproj
   SHELL_PROJECT: src/SimDesk.ShellExtension/SimDesk.ShellExtension.csproj
-  TEST_PROJECT: tests/SimDesk.Core.Tests/SimDesk.Core.Tests.csproj
-  PUBLISH_DIR: publish/
   DOTNET_VERSION: '10.0.x'
 
 jobs:
   # ============================================================
-  # Linux: Core 是纯 net10.0 类库，可在 Linux 编译 + 测试
-  # 秒级反馈，不消耗 Windows runner 额度
+  # Linux: Core 编译 + 测试，秒级反馈
   # ============================================================
   linux-test:
-    name: Linux 测试 (Core)
+    name: Linux 测试
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
-      - name: 安装 .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: 还原依赖
-        run: dotnet restore ${{ env.TEST_PROJECT }}
-
-      - name: 编译
-        run: dotnet build ${{ env.TEST_PROJECT }} --no-restore
-
-      - name: 运行测试
-        run: dotnet test ${{ env.TEST_PROJECT }} --no-build --verbosity normal
+      - run: dotnet restore ${{ env.TEST_PROJECT }}
+      - run: dotnet build ${{ env.TEST_PROJECT }} --no-restore
+      - run: dotnet test ${{ env.TEST_PROJECT }} --no-build --verbosity normal
 
   # ============================================================
-  # Windows: WPF + Shell + Installer
-  # Debug   → 编译 + 测试（快）
-  # Release → 编译 + 测试 + 发布 + 打包 MSI + 上传
+  # Windows: 编译 + 测试 + 发布为 zip + 上传产物
   # ============================================================
   build:
-    name: Windows (${{ matrix.configuration }})
+    name: Windows
     runs-on: windows-latest
 
     strategy:
@@ -58,37 +44,17 @@ jobs:
         configuration: [Debug, Release]
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
-      - name: 安装 .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: 安装 MSBuild
-        uses: microsoft/setup-msbuild@v2
+      - run: dotnet restore ${{ env.SOLUTION }}
+      - run: dotnet build ${{ env.SOLUTION }} --no-restore --configuration ${{ matrix.configuration }}
+      - run: dotnet test ${{ env.TEST_PROJECT }} --no-build --configuration ${{ matrix.configuration }} --verbosity normal
 
-      - name: 安装 WiX Toolset
-        if: matrix.configuration == 'Release'
-        run: |
-          curl -L -o wix.zip "https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip"
-          Expand-Archive wix.zip -DestinationPath "C:\wix"
-          "WIX=C:\wix" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "C:\wix" | Out-File -FilePath $env:GITHUB_PATH -Append
-
-      - name: 还原依赖
-        run: dotnet restore ${{ env.SOLUTION }}
-
-      - name: 编译
-        run: dotnet build ${{ env.SOLUTION }} --no-restore --configuration ${{ matrix.configuration }}
-
-      - name: 运行测试
-        run: dotnet test ${{ env.TEST_PROJECT }} --no-build --configuration ${{ matrix.configuration }} --verbosity normal
-
-      # ======== 以下仅 Release ========
+      # ======== Release: 发布 + 上传 ========
 
       - name: 发布 App
         if: matrix.configuration == 'Release'
@@ -97,7 +63,7 @@ jobs:
           --configuration Release
           --runtime win-x64
           --self-contained true
-          -o ${{ env.PUBLISH_DIR }}/SimDesk
+          -o publish/SimDesk
 
       - name: 发布 Shell 扩展
         if: matrix.configuration == 'Release'
@@ -106,18 +72,12 @@ jobs:
           --configuration Release
           --runtime win-x64
           --self-contained true
-          -o ${{ env.PUBLISH_DIR }}/ShellExt
-
-      - name: 构建 MSI 安装包
-        if: matrix.configuration == 'Release'
-        run: |
-          candle.exe src\SimDesk.Installer\SimDesk.wxs -out publish\SimDesk.wixobj
-          light.exe publish\SimDesk.wixobj -out publish\SimDesk-0.1.0-x64.msi
+          -o publish/ShellExt
 
       - name: 上传产物
         if: matrix.configuration == 'Release'
         uses: actions/upload-artifact@v4
         with:
           name: SimDesk-win-x64
-          path: ${{ env.PUBLISH_DIR }}
+          path: publish/
           retention-days: 30
