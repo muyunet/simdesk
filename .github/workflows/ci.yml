@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ===== Linux: 编译 Core + 运行测试 =====
+  linux-test:
+    name: Linux 测试
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: 还原依赖
+        run: dotnet restore
+
+      - name: 编译 Core
+        run: dotnet build src/SimDesk.Core/SimDesk.Core.csproj --no-restore
+
+      - name: 运行单元测试
+        run: dotnet test tests/SimDesk.Core.Tests/SimDesk.Core.Tests.csproj --no-build --verbosity normal
+
+  # ===== Windows: 完整编译 + 发布 =====
+  windows-build:
+    name: Windows 编译
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: 还原依赖
+        run: dotnet restore
+
+      - name: 编译全部项目
+        run: dotnet build --no-restore
+
+      - name: 运行测试
+        run: dotnet test tests/SimDesk.Core.Tests/SimDesk.Core.Tests.csproj --no-build --verbosity normal
+
+      - name: 发布 App（自包含）
+        run: >
+          dotnet publish src/SimDesk.App/SimDesk.App.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -o publish/SimDesk
+
+      - name: 发布 Shell 扩展
+        run: >
+          dotnet publish src/SimDesk.ShellExtension/SimDesk.ShellExtension.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          -o publish/ShellExt
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: SimDesk-win-x64
+          path: publish/
+          retention-days: 30
